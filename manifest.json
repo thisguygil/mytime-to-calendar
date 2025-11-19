@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Target myTime Calendarizer",
+  "version": "0.1.0",
+  "description": "Export Target myTime weekly schedule as a .ics calendar file.",
+  "host_permissions": [
+    "https://mytime.target.com/team-member/schedule*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://mytime.target.com/team-member/schedule*"],
+      "js": [
+        "content/parseShifts.js",
+        "content/icsBuilder.js",
+        "content/main.js"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Target Calendarizer"
+  },
+  "icons": {
+  "16": "icons/icon16.png",
+  "32": "icons/icon32.png",
+  "48": "icons/icon48.png",
+  "128": "icons/icon128.png"
+  }      
+}
