@@ -1,5 +1,5 @@
 
-# Target myTime Calendarizer (Chrome Extension)
+# myTime to Calendar (Chrome Extension)
 
 A lightweight MV3 browser extension that helps Target team members turn their **myTime weekly schedule** into calendar events.
 
