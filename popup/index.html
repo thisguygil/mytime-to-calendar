@@ -1,16 +1,41 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8">
-  <title>Target Calendarizer</title>
-  <link rel="stylesheet" href="index.css">
-</head>
-<body>
-  <h2>Target Calendarizer</h1>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>myTime to Calendar Settings</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="title">myTime to Calendar</div>
+      <div class="subtitle">Settings</div>
+    </header>
 
-  <button id="exportBtn">Export as .ics</button>
-  <div id="status"></div>
+    <main class="card">
+      <label class="row">
+        <div class="rowText">
+          <div class="rowTitle">Include past shifts</div>
+          <div class="rowDesc">Add/export shifts that already ended</div>
+        </div>
+        <input id="includePastShifts" type="checkbox" />
+      </label>
 
-  <script src="index.js"></script>
-</body>
+      <label class="row">
+        <div class="rowText">
+          <div class="rowTitle">Open Google Calendar in new tab</div>
+          <div class="rowDesc">Opens calendar.google.com after “Add all”</div>
+        </div>
+        <input id="openGoogleCalendarAfterAdd" type="checkbox" />
+      </label>
+
+      <div class="footer">
+        <div id="status" class="status" aria-live="polite"></div>
+        <button id="reset" class="btn secondary" type="button">Reset</button>
+      </div>
+    </main>
+
+    <script src="../shared/settings.js"></script>
+    <script src="popup.js"></script>
+  </body>
 </html>

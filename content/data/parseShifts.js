@@ -1,3 +1,5 @@
+// content/data/parseShifts.js
+
 const SHIFT_LINK_SELECTOR = 'a[role="link"][aria-label*=" shift from "]';
 const START_SELECTOR = 'p[data-cy="nextSchedDisplaySegStartTime"]';
 const END_SELECTOR   = 'p[data-cy="nextSchedDisplaySegEndTime"]';
@@ -82,4 +84,52 @@ function parseShiftsFromPage() {
   });
 
   return shifts;
+}
+
+function parseShiftFromManageShiftButton(manageBtn) {
+  if (!manageBtn) return null;
+
+  const li =
+    manageBtn.closest('li[data-cy^="weeklySchedListItem"]') ||
+    manageBtn.closest("li") ||
+    manageBtn.parentElement;
+
+  if (!li) return null;
+
+  // Reuse the same robust date lookup you already have (aria-label "schedule for YYYY-MM-DD")
+  const shiftDate = findShiftDate(li);
+  if (!shiftDate) return null;
+
+  const startText =
+    li.querySelector('[data-cy="nextSchedDisplaySegStartTime"]')?.textContent?.trim() || null;
+  const endText =
+    li.querySelector('[data-cy="nextSchedDisplaySegEndTime"]')?.textContent?.trim() || null;
+
+  if (!startText || !endText) return null;
+
+  const location =
+    li.querySelector('[data-cy="nextSchedDisplaySegLoc"]')?.textContent?.trim() || "";
+
+  // Heuristic role (same idea you had in manageShiftMenu.js)
+  const dateText =
+    li.querySelector('[data-cy="nextSchedDisplaySegDateOnWeekly"]')?.textContent?.trim() || null;
+
+  const role =
+    Array.from(li.querySelectorAll("p.MuiTypography-body2"))
+      .map((p) => p.textContent?.trim())
+      .find((t) => t && t !== dateText && t !== startText && t !== endText && t !== location && t.length < 60) ||
+    "Shift";
+
+  const { hour: sh, minute: sm } = parseTime(startText);
+  const { hour: eh, minute: em } = parseTime(endText);
+
+  const start = new Date(shiftDate);
+  start.setHours(sh, sm, 0, 0);
+
+  const end = new Date(shiftDate);
+  end.setHours(eh, em, 0, 0);
+
+  if (end <= start) end.setDate(end.getDate() + 1);
+
+  return { start, end, location, role };
 }

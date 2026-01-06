@@ -1,89 +1,131 @@
 
-# Target Calendarizer (Chrome Extension)
+# Target myTime Calendarizer (Chrome Extension)
 
-A simple Chrome extension that lets Target team members quickly export their weekly **myTime** schedule as a clean, standards-compliant **.ics calendar file**, ready to import into Apple Calendar, Google Calendar, Outlook, or any other calendar app.
+A lightweight MV3 browser extension that helps Target team members turn their **myTime weekly schedule** into calendar events.
 
----
-
-## 🚀 Features
-
-- **One-click export** of your current week's Target schedule  
-- **Automatic parsing** of your schedule directly from  
-  `https://mytime.target.com/team-member/schedule`
-- **Clean .ics events** that import perfectly into any calendar app
-- **Accurate shift locations**, using your store number pulled directly from myTime  
-  (e.g. `LOCATION: T1234`)
-- **Job role included** in each calendar event
-- **No configuration needed**
-- **No background script**
-- **No personal data stored**
+You can:
+- **Export your schedule as an `.ics` file** (Apple Calendar / Outlook / Google import / etc.)
+- **Add all shifts directly to Google Calendar** (via Google Calendar API)
+- From the **“Manage shift”** menu, **add/export a single shift** (Google Calendar *link* template + single-shift `.ics`)
 
 ---
 
-## 📥 Installation
+## Features
 
-*This extension is not yet available on the Chrome Web Store, but will hopefully be published soon.*  
-In the meantime, you can install it manually:
+### Top bar (schedule page)
+When you’re on the myTime schedule page, the extension injects two centered buttons into the top header:
+- **📅 Add all to Google** (adds shifts via Google Calendar API)
+- **Export .ics** (downloads an `.ics` containing all shifts)
 
-1. Clone or download this repository  
-2. In Chrome, go to: `chrome://extensions/`
-3. Enable **Developer mode** (top right)
+### Per-shift menu (“Manage shift”)
+Inside each shift’s **Manage shift** menu, the extension adds:
+- **Add this shift to Google** (opens Google Calendar “TEMPLATE” link — customizable before saving)
+- **Export this shift (.ics)** (downloads a single-shift `.ics`)
+
+### Settings popup
+Click the extension icon to open Settings:
+- **Include past shifts** (include shifts that already ended)
+- **Open Google Calendar in new tab** (after **Add all** succeeds)
+
+---
+
+## How it works
+
+### 1) DOM parsing (myTime schedule)
+The extension parses shifts directly from the schedule page DOM:
+- Shift date (`aria-label` “schedule for YYYY-MM-DD”)
+- Start & end times (handles overnight shifts)
+- Location and role
+
+It supports parsing:
+- **All shifts on the page**
+- **A single shift based on the clicked “Manage shift” button**
+
+### 2) Calendar output options
+
+#### `.ics` generation
+A shared utility builds a standards-based iCalendar string for one or many shifts and downloads it.
+
+#### Google Calendar link (single shift)
+For the per-shift menu, the extension generates a Google Calendar “render?action=TEMPLATE” URL so you can edit details before saving.
+
+#### Google Calendar API (add all)
+For the top bar “Add all”, the extension:
+- Uses `chrome.identity.launchWebAuthFlow` (implicit OAuth) and caches the short-lived access token in `chrome.storage.local`
+- Calls Google Calendar `events.insert` for each shift
+- If the token is invalid/expired, it clears the cached token and re-auths once, then retries
+
+---
+
+## Permissions (what/why)
+
+- **host permissions**
+  - `https://mytime.target.com/*` (read schedule DOM and inject UI)
+  - Google APIs for Calendar + OAuth
+- **permissions**
+  - `identity` (OAuth via `launchWebAuthFlow`)
+  - `storage` (settings + token cache)
+
+---
+
+## Installation (unpacked)
+
+1. Clone/download this repo
+2. Open Chrome → `chrome://extensions`
+3. Enable **Developer mode**
 4. Click **Load unpacked**
-5. Select this project folder
-
-The extension icon should now appear in your toolbar.
+5. Select the project root folder
 
 ---
 
-## 🧠 How It Works
+## Usage
 
-The extension consists of:
-
-### **1. Content Scripts** (in `content/`)
-Injected only on the myTime schedule page:
-
-- `parseShifts.js`  
-  Extracts the date, start time, end time, role, and store number from each shift tile.
-
-- `icsBuilder.js`  
-  Generates a full `.ics` file, with per-event fields:
-  - `SUMMARY: Target Shift`
-  - `LOCATION: T<store_number>`
-  - `DESCRIPTION: Job Role: <role>`
-
-- `main.js`  
-  Handles messages from the popup and triggers the file download.
-
-### **2. Popup UI** (in `popup/`):
-`index.html`, `index.js`, `index.css`  
-
-The popup:
-
-- Checks whether the current tab is the correct myTime URL
-- Enables or disables the export button
-- Sends a message to trigger the `.ics` generation
+1. Go to `https://mytime.target.com/team-member/schedule`
+2. Use the injected top-bar buttons:
+   - **📅 Add all to Google**
+   - **Export .ics**
+3. For a single shift:
+   - Open a shift’s **Manage shift** menu
+   - Choose **Add this shift to Google** (template link) or **Export this shift (.ics)**
 
 ---
 
-## 🔒 Privacy
+## Project structure
 
-This extension:
+```
 
-- Does **not** collect or send any data
-- Does **not** access cookies or personal information
-- Does **not** store anything except temporary in-memory calendar data
-- Does **not** use analytics or external APIs
+manifest.json
 
-Everything runs **locally in your browser**.
+shared/
+calendarUtils.js        # ICS + Google link template + Google API event bodies
+settings.js             # load/save settings (chrome.storage.sync)
+
+content/
+data/
+parseShifts.js        # parse shifts (page + single shift)
+ui/
+topBar.js             # inject top bar buttons
+manageShiftMenu.js    # inject items into Manage shift menu
+main.js                 # SPA navigation + render lifecycle
+
+background/
+background.js           # message handler + imports
+auth.js                 # OAuth implicit flow + token cache
+calendarApi.js          # Google Calendar API calls (events.insert)
+
+popup/
+index.html
+popup.css
+popup.js
+
+```
 
 ---
 
-## 🛠️ Development
+## Notes / known behavior
+- **Google “Add all” can create duplicates** if you run it multiple times (it inserts new events each time).
+- The per-shift **Google option uses a link template** (by design) so you can customize details before saving.
+- Times are built from the schedule page in **your local timezone**; `.ics` output uses UTC timestamps, while Google API inserts use RFC3339 local timestamps with timezone info.
 
-To modify the code:
 
-1. Make changes to the JavaScript files in `content/` or `popup/`
-2. Reload the extension via `chrome://extensions` → **Reload**
-3. Open the popup or schedule page to test your changes
 
----

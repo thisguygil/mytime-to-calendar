@@ -1,44 +1,87 @@
-// Main logic for content script
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.type === "EXPORT_ICS") {
+// content/main.js
+
+function isOnSchedulePage() {
+  return location.pathname.includes("/team-member/schedule");
+}
+
+/* -------------------- scheduling (performance) -------------------- */
+
+let tmcScheduled = false;
+let tmcInFlight = false;
+let tmcLastRunAt = 0;
+
+function scheduleRunOnce() {
+  if (tmcScheduled) return;
+  tmcScheduled = true;
+
+  requestAnimationFrame(async () => {
+    tmcScheduled = false;
+
+    if (tmcInFlight) return;
+
+    const now = Date.now();
+    if (now - tmcLastRunAt < 200) return;
+    tmcLastRunAt = now;
+
+    tmcInFlight = true;
     try {
-      const shifts = parseShiftsFromPage();
-      if (!shifts.length) {
-        sendResponse({
-          ok: false,
-          error: "No shifts found on this page."
-        });
-        return true;
-      }
-
-      const icsText = buildICS(shifts);
-      triggerDownload(icsText);
-
-      sendResponse({ ok: true });
-    } catch (err) {
-      console.error(err);
-      sendResponse({
-        ok: false,
-        error: err.message || "Unexpected error."
-      });
+      await runOnce();
+    } finally {
+      tmcInFlight = false;
     }
+  });
+}
 
-    return true;
+/* -------------------- main render logic -------------------- */
+
+async function runOnce() {
+  if (!isOnSchedulePage()) {
+    removeTopBarButtons?.();
+    return;
   }
 
-  return false;
-});
-
-
-// Trigger download of ICS file
-function triggerDownload(icsText) {
-  const blob = new Blob([icsText], { type: "text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "target-schedule.ics";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Ensure UI exists (idempotent)
+  ensureTopBarButtons?.();
 }
+
+/* -------------------- init + SPA hooks -------------------- */
+
+function hookHistory(onNav) {
+  const _pushState = history.pushState;
+  const _replaceState = history.replaceState;
+
+  history.pushState = function (...args) {
+    _pushState.apply(this, args);
+    onNav();
+  };
+
+  history.replaceState = function (...args) {
+    _replaceState.apply(this, args);
+    onNav();
+  };
+
+  window.addEventListener("popstate", onNav);
+}
+
+function init() {
+  // Init Manage Shift menu injection ONCE (global function, no imports)
+  globalThis.initManageShiftMenuUi?.();
+
+  runOnce();
+
+  hookHistory(() => setTimeout(scheduleRunOnce, 0));
+
+  const mo = new MutationObserver(scheduleRunOnce);
+  mo.observe(document.body || document.documentElement, {
+    subtree: true,
+    childList: true,
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "sync") return;
+    if (!changes?.[TMC_SETTINGS?.KEY]) return;
+    scheduleRunOnce();
+  });
+}
+
+init();
