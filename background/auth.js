@@ -25,6 +25,18 @@ function launchWebAuthFlow(url, interactive) {
   });
 }
 
+function getOAuthRedirectUri() {
+  const raw = chrome.identity.getRedirectURL("oauth2");
+  const url = new URL(raw);
+
+  // Chrome: already good
+  if (url.host.endsWith("chromiumapp.org")) return raw;
+
+  // Firefox: convert to loopback
+  // Use the host from getRedirectURL() as the subdomain piece.
+  return `http://127.0.0.1/mozoauth2/${url.host}`;
+}
+
 function storageGet(key) {
   return new Promise((resolve) => chrome.storage.local.get([key], resolve));
 }
@@ -64,8 +76,7 @@ async function getValidAccessToken({ interactive }) {
 
   if (!interactive) throw new Error("No valid token available (non-interactive)");
 
-  // NOTE: whitelist this exact redirect (including /oauth2) in your Web OAuth client
-  const redirectUri = chrome.identity.getRedirectURL("oauth2");
+  const redirectUri = getOAuthRedirectUri();
   const state = randomState();
 
   const authUrl = new URL(AUTH_ENDPOINT);

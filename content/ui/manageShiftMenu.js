@@ -36,9 +36,19 @@ function makeDividerLikeExisting(menu) {
 }
 
 function svgToEl(svgString) {
-  const wrap = document.createElement("div");
-  wrap.innerHTML = svgString.trim();
-  return wrap.firstElementChild;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(svgString.trim(), "image/svg+xml");
+  const svg = doc.documentElement;
+
+  // Basic sanity check
+  if (!svg || svg.nodeName.toLowerCase() !== "svg") {
+    return document.createElement("span");
+  }
+
+  // Defensive: strip any scripts if they somehow appear
+  svg.querySelectorAll("script, foreignObject").forEach((n) => n.remove());
+
+  return document.importNode(svg, true);
 }
 
 /* -------------------- icons -------------------- */

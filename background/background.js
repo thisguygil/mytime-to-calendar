@@ -1,13 +1,15 @@
 // background/background.js
 // Orchestrator: imports + message handler
 
-importScripts(
-  chrome.runtime.getURL("shared/calendarUtils.js"),
-  chrome.runtime.getURL("background/auth.js"),
-  chrome.runtime.getURL("background/calendarApi.js")
-);
+if (typeof importScripts === "function") {
+  importScripts(
+    chrome.runtime.getURL("shared/calendarUtils.js"),
+    chrome.runtime.getURL("background/auth.js"),
+    chrome.runtime.getURL("background/calendarApi.js")
+  );
+}
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type !== "TMC_ADD_ALL_SHIFTS") return;
 
   (async () => {
