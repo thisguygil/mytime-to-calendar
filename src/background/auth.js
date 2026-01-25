@@ -1,4 +1,4 @@
-// background/auth.js
+// src/background/auth.js
 // OAuth via launchWebAuthFlow (implicit flow) + token caching in chrome.storage.local
 
 const WEB_CLIENT_ID = "1098807992576-mgsjfcr18nd9s0b4bv2g8hvhikh94fdk.apps.googleusercontent.com";

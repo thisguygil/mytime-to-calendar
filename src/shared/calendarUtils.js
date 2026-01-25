@@ -1,4 +1,4 @@
-// shared/calendarUtils.js
+// src/shared/calendarUtils.js
 // Pure helpers shared by content scripts + service worker.
 // Exposes a single namespace: globalThis.TMC
 
@@ -170,6 +170,13 @@
     };
   }
 
+  function getCalendarWeekUrl(date) {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `https://calendar.google.com/calendar/u/0/r/week/${y}/${m}/${d}`;
+  }
+
   /* ------------------------- downloads ------------------------- */
 
   function downloadTextFile({ filename, mime, text }) {
@@ -195,6 +202,7 @@
   TMC.buildICS = buildICS;
   TMC.buildGoogleRenderUrl = buildGoogleRenderUrl;
   TMC.buildGoogleEventInsertBody = buildGoogleEventInsertBody;
+  TMC.getCalendarWeekUrl = getCalendarWeekUrl;
   TMC.downloadTextFile = downloadTextFile;
   TMC.downloadICS = downloadICS;
 

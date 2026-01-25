@@ -1,4 +1,4 @@
-// background/calendarApi.js
+// src/background/calendarApi.js
 // Google Calendar API calls (events.insert)
 
 const CALENDAR_ID = "primary";

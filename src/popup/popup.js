@@ -1,4 +1,4 @@
-// popup/popup.js
+// src/popup/popup.js
 
 const el = (id) => document.getElementById(id);
 

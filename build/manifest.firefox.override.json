@@ -1,0 +1,21 @@
+{
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "mytime-to-calendar@thisguygil.com",
+      "data_collection_permissions": {
+        "required": [
+          "authenticationInfo",
+          "websiteContent"
+        ]
+      }
+    }
+  },
+  "background": {
+    "scripts": [
+      "shared/calendarUtils.js",
+      "background/auth.js",
+      "background/calendarApi.js",
+      "background/background.js"
+    ]
+  }
+}

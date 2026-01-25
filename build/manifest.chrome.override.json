@@ -1,0 +1,11 @@
+{
+  "oauth2": {
+    "client_id": "1098807992576-mgsjfcr18nd9s0b4bv2g8hvhikh94fdk.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/calendar.events"
+    ]
+  },
+  "background": {
+    "service_worker": "background/background.js"
+  }
+}

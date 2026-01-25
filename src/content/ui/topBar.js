@@ -1,4 +1,4 @@
-// content/ui/topBar.js
+// src/content/ui/topBar.js
 
 const TOP_EXPORT_BTN_ID = "tmc_export_btn";
 const TOP_ADD_GOOGLE_BTN_ID = "tmc_add_google_btn";
@@ -31,6 +31,11 @@ function findTopBarContainer() {
       );
     }) || null
   );
+}
+
+function isFirefoxAndroid() {
+  const ua = navigator.userAgent;
+  return ua.includes("Android") && ua.includes("Firefox/");
 }
 
 function flashButtonText(btn, text, ms = 1100) {
@@ -81,93 +86,101 @@ function ensureTopBarButtons() {
     zIndex: "9999",
   });
 
-  // Primary: Add all to Google (API)
-  const addBtn = document.createElement("button");
-  addBtn.id = TOP_ADD_GOOGLE_BTN_ID;
-  addBtn.type = "button";
-  addBtn.textContent = "📅 Add all to Google";
+  // Primary: Add all to Google (API) - API is available (Chrome/Firefox desktop)
+  if (!isFirefoxAndroid()) {
+    const addBtn = document.createElement("button");
+    addBtn.id = TOP_ADD_GOOGLE_BTN_ID;
+    addBtn.type = "button";
+    addBtn.textContent = "📅 Add all to Google";
 
-  Object.assign(addBtn.style, buildButtonBaseStyle(), {
-    border: "1px solid rgba(255,255,255,0.35)",
-    color: "white",
-  });
+    Object.assign(addBtn.style, buildButtonBaseStyle(), {
+      border: "1px solid rgba(255,255,255,0.35)",
+      color: "white",
+    });
 
-  addBtn.addEventListener("mouseenter", () => {
-    addBtn.style.background = "rgba(255,255,255,0.10)";
-    addBtn.style.borderColor = "rgba(255,255,255,0.55)";
-  });
-  addBtn.addEventListener("mouseleave", () => {
-    addBtn.style.background = "transparent";
-    addBtn.style.borderColor = "rgba(255,255,255,0.35)";
-  });
+    addBtn.addEventListener("mouseenter", () => {
+      addBtn.style.background = "rgba(255,255,255,0.10)";
+      addBtn.style.borderColor = "rgba(255,255,255,0.55)";
+    });
+    addBtn.addEventListener("mouseleave", () => {
+      addBtn.style.background = "transparent";
+      addBtn.style.borderColor = "rgba(255,255,255,0.35)";
+    });
 
-  addBtn.addEventListener("click", async () => {
-    const originalText = addBtn.textContent;
-    if (addBtn.dataset.tmcBusy === "1") return;
-    addBtn.dataset.tmcBusy = "1";
+    addBtn.addEventListener("click", async () => {
+      const originalText = addBtn.textContent;
+      if (addBtn.dataset.tmcBusy === "1") return;
+      addBtn.dataset.tmcBusy = "1";
 
-    addBtn.disabled = true;
-    addBtn.style.cursor = "default";
+      addBtn.disabled = true;
+      addBtn.style.cursor = "default";
 
-    try {
-      let shifts = parseShiftsFromPage();
-      if (!shifts.length) {
-        flashButtonText(addBtn, "No shifts found");
-        return;
-      }
+      try {
+        let shifts = parseShiftsFromPage();
+        if (!shifts.length) {
+          flashButtonText(addBtn, "No shifts found");
+          return;
+        }
 
-      const settings = await TMC_SETTINGS.loadSettings();
-      shifts = TMC.filterShiftsByPast(shifts, settings.includePastShifts);
+        const settings = await TMC_SETTINGS.loadSettings();
+        shifts = TMC.filterShiftsByPast(shifts, settings.includePastShifts);
 
-      if (!shifts.length) {
-        flashButtonText(
-          addBtn,
-          settings.includePastShifts ? "No shifts found" : "No upcoming shifts"
-        );
-        return;
-      }
-
-      addBtn.textContent = "Adding…";
-
-      const res = await chrome.runtime.sendMessage({
-        type: "TMC_ADD_ALL_SHIFTS",
-        shifts: shifts.map((s) => ({
-          start: s.start instanceof Date ? s.start.toISOString() : String(s.start),
-          end: s.end instanceof Date ? s.end.toISOString() : String(s.end),
-          location: s.location,
-          role: s.role,
-        })),
-      });
-
-      if (!res?.ok) throw new Error(res?.error || "Failed to add shifts");
-
-      addBtn.textContent = "Added ✅";
-
-      if (settings.openGoogleCalendarAfterAdd) {
-        setTimeout(() => {
-          window.open(
-            "https://calendar.google.com/calendar/u/0/r",
-            "_blank",
-            "noopener,noreferrer"
+        if (!shifts.length) {
+          flashButtonText(
+            addBtn,
+            settings.includePastShifts ? "No shifts found" : "No upcoming shifts"
           );
-        }, 350);
-      }
+          return;
+        }
 
-      setTimeout(() => {
-        addBtn.textContent = originalText;
-      }, 900);
-    } catch (e) {
-      console.error(e);
-      addBtn.textContent = "Error";
-      setTimeout(() => {
-        addBtn.textContent = originalText;
-      }, 1100);
-    } finally {
-      addBtn.disabled = false;
-      addBtn.style.cursor = "pointer";
-      addBtn.dataset.tmcBusy = "0";
-    }
-  });
+        addBtn.textContent = "Adding…";
+
+        const res = await chrome.runtime.sendMessage({
+          type: "TMC_ADD_ALL_SHIFTS",
+          shifts: shifts.map((s) => ({
+            start: s.start instanceof Date ? s.start.toISOString() : String(s.start),
+            end: s.end instanceof Date ? s.end.toISOString() : String(s.end),
+            location: s.location,
+            role: s.role,
+          })),
+        });
+
+        if (!res?.ok) throw new Error(res?.error || "Failed to add shifts");
+
+        addBtn.textContent = "Added ✅";
+
+        if (settings.openGoogleCalendarAfterAdd) {
+          const earliestShift = shifts
+            .map(s => new Date(s.start))
+            .sort((a, b) => a - b)[0];
+
+          const url = TMC.getCalendarWeekUrl(earliestShift);
+          setTimeout(() => {
+            window.open(
+              url,
+              "_blank",
+              "noopener,noreferrer"
+            );
+          }, 350);
+        }
+
+        setTimeout(() => {
+          addBtn.textContent = originalText;
+        }, 900);
+      } catch (e) {
+        console.error(e);
+        addBtn.textContent = "Error";
+        setTimeout(() => {
+          addBtn.textContent = originalText;
+        }, 1100);
+      } finally {
+        addBtn.disabled = false;
+        addBtn.style.cursor = "pointer";
+        addBtn.dataset.tmcBusy = "0";
+      }
+    });
+    group.append(addBtn);
+  }
 
   // Secondary: Export .ics
   const exportBtn = document.createElement("button");
@@ -215,8 +228,8 @@ function ensureTopBarButtons() {
       console.error(e);
     }
   });
+  group.append(exportBtn);
 
-  group.append(addBtn, exportBtn);
   topBar.appendChild(group);
 }
 

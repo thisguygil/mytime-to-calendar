@@ -1,36 +1,22 @@
 {
   "manifest_version": 3,
   "name": "myTime to Calendar",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Export Target myTime schedules to Google Calendar or .ics files.",
   "host_permissions": [
     "https://mytime.target.com/*",
     "https://www.googleapis.com/*",
     "https://oauth2.googleapis.com/*"
   ],
-  "permissions": ["identity", "storage"],
-  "browser_specific_settings": {
-    "gecko": {
-      "id": "mytime-to-calendar@thisguygil.com",
-      "data_collection_permissions": {
-        "required": [
-          "authenticationInfo",
-          "websiteContent"
-        ]
-      }
-    }
-  },
-  "background": {
-    "scripts": [
-      "shared/calendarUtils.js",
-      "background/auth.js",
-      "background/calendarApi.js",
-      "background/background.js"
-    ]
-  },
+  "permissions": [
+    "identity",
+    "storage"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://mytime.target.com/*"],
+      "matches": [
+        "https://mytime.target.com/*"
+      ],
       "js": [
         "shared/calendarUtils.js",
         "shared/settings.js",

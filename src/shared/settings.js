@@ -1,4 +1,4 @@
-// shared/settings.js
+// src/shared/settings.js
 // Exposes: globalThis.TMC_SETTINGS = { KEY, DEFAULTS, loadSettings, saveSettings }
 
 (function (g) {

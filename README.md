@@ -1,31 +1,37 @@
 # myTime to Calendar (Chrome & Firefox Extension)
 
-A lightweight browser extension that helps **Target team members** turn their **myTime weekly schedule** into calendar events.
+A lightweight browser extension that helps **Target team members** turn their **weekly schedule** into calendar events.
 
-The extension works on **both Chrome and Firefox**, with platform-appropriate features and permissions.
+The extension works on **both Chrome (PC) and Firefox (PC/Android)**.
 
 ---
 
 ## Features
 
-### Schedule page (top bar)
+When you’re on the **myTime schedule page** ([mytime.target.com/team-member/schedule](https://mytime.target.com/team-member/schedule)),
 
-When you’re on the **myTime schedule page** ([mytime.target.com/team-member/schedule](https://mytime.target.com/team-member/schedule)), the extension injects centered buttons into the header:
+### Top bar
 
-* **📅 Add all to Google**
-  Adds all visible shifts to Google Calendar (Chrome only, via API)
+In the header, the extension adds two buttons:
 
-* **Export .ics**
-  Downloads an `.ics` file containing all shifts
+* **📅 Add all to Google** (Chrome & Firefox PC only, using Google Calendar API)
+
+  Adds all visible shifts to Google Calendar
+
+* **Export .ics** (all platforms)
+
+  Downloads an `.ics` file containing all visible shifts that can be imported into any calendar app
 
 ### Per-shift menu (Under “Manage Shift”)
 
-Inside each shift’s **Manage Shift** menu:
+Inside each shift’s **Manage Shift** menu, two new options are added:
 
 * **Add this shift to Google**
+
   Opens a Google Calendar *template* so you can review/edit before saving
 
 * **Export this shift (.ics)**
+
   Downloads a single-shift `.ics` file
 
 ### Settings popup
@@ -33,10 +39,12 @@ Inside each shift’s **Manage Shift** menu:
 Click the extension icon to open settings:
 
 * **Include past shifts**
-  Include shifts that already ended
+  
+  Include shifts that already ended (default: off)
 
 * **Open Google Calendar in a new tab**
-  After a successful “Add all” operation
+  
+  After a successful “Add all” operation (default: on)
 
 ---
 
@@ -47,46 +55,11 @@ This extension is available on **both major browser platforms**:
 * **Chromium-based browsers** - Install via the [**Chrome Web Store**](https://chromewebstore.google.com/detail/mytime-to-calendar/odekbnpmjmbggpaeglaljcgapeoknhcp)
   (works on Chrome, Edge, Brave, and other Chromium browsers)
 
-* **Firefox** - Install via **Firefox Add-ons** (submission currently under review)
+* **Firefox** - Install via [**Firefox Add-ons**](https://addons.mozilla.org/en-US/firefox/addon/mytime-to-calendar/) (works on Firefox PC and Android)
 
-All core features — including `.ics` export, per-shift actions, and Google Calendar integration — are supported on both platforms.
+All features — including `.ics` export, per-shift actions, and Google Calendar integration, are **supported on both PC platforms**.
 
----
-
-## How it works
-
-### 1) DOM parsing (myTime schedule)
-
-The extension parses shift data directly from the myTime schedule page:
-
-* Date (from `aria-label` metadata)
-* Start & end times (including overnight shifts)
-* Location and role
-
-It supports:
-
-* Parsing **all shifts on the page**
-* Parsing **a single shift** from the clicked “Manage shift” menu
-
-### 2) Calendar output options
-
-#### `.ics` generation
-
-A shared utility builds a standards-compliant iCalendar file for one or many shifts and downloads it locally.
-
-#### Google Calendar template (single shift)
-
-For per-shift actions, the extension generates a
-`render?action=TEMPLATE` URL so details can be edited before saving.
-
-#### Google Calendar API (add all – Chrome)
-
-On Chrome, the extension can:
-
-* Authenticate using `chrome.identity.launchWebAuthFlow`
-* Cache a short-lived access token in `chrome.storage.local`
-* Insert events using `events.insert`
-* Re-authenticate automatically if the token expires
+The "Add all to Google" button using the Google Calendar API is **not available on Firefox Android**, but you can still use per-shift Google Calendar templates.
 
 ---
 
@@ -99,71 +72,58 @@ On Chrome, the extension can:
 
 * Google APIs
   Required only for Chrome’s Google Calendar API integration
+  Despite the fact that it's not used on Firefox Android, the permission is still needed due to manifest requirements since the feature is available on Firefox PC.
 
 ### Extension permissions
 
-* `identity` – OAuth authentication (Chrome)
+* `identity` – OAuth authentication for Google API (Chrome and Firefox PC, but again required on Firefox Android due to manifest requirements)
 * `storage` – settings and token cache
 
 Firefox builds include additional metadata for AMO data-collection disclosure.
-
-
----
-
-## Usage
-
-1. Go to
-   `https://mytime.target.com/team-member/schedule`
-
-2. Use the top bar buttons:
-
-   * **📅 Add all to Google**
-   * **Export .ics**
-
-3. For a single shift:
-
-   * Open **Manage shift**
-   * Choose **Add this shift to Google** or **Export this shift (.ics)**
 
 ---
 
 ## Project structure (simplified)
 
 ```
-background/
-  background.js        # message handling
-  auth.js              # OAuth flow (Chrome)
-  calendarApi.js       # Google Calendar API
+src/
+  background/
+    background.js                 # message handling
+    auth.js                       # OAuth flow
+    calendarApi.js                # Google Calendar API
 
-content/
-  parseShifts.js       # DOM parsing
-  ui/
-    topBar.js
-    manageShiftMenu.js
-  main.js              # SPA lifecycle handling
+  content/
+    parseShifts.js                # DOM parsing
+    ui/
+      topBar.js                   # top bar buttons
+      manageShiftMenu.js          # per-shift menu items
+    main.js                       # SPA lifecycle handling
 
-shared/
-  calendarUtils.js     # ICS + Google template helpers
-  settings.js          # storage helpers
+  shared/
+    calendarUtils.js              # ICS + Google template helpers
+    settings.js                   # storage helpers
 
-popup/
-  index.html
-  popup.css
-  popup.js
+  popup/                          # settings UI
+    index.html
+    popup.css
+    popup.js
 
-manifest.chrome.json
-manifest.firefox.json
+build/
+  build.ps1                       # build script
+  manifest.chrome.override.json   # Chrome-specific manifest additions
+  manifest.firefox.override.json  # Firefox-specific manifest additions
 ```
 
 ---
 
 ## Notes / known behavior
 
-* **Running “Add all” multiple times can create duplicates**
-  (events are inserted each run)
+* "Add all to Google" requires **Chrome or Firefox PC** and is hidden on Firefox Android
+  (not available on Firefox Android due to lack of `browser.identity` API)
 
-* **Per-shift Google actions use a template link by design**
-  to allow editing before saving
+* Running “Add all” multiple times will create duplicates (events are inserted each button click)
+
+* Per-shift Google actions use a template link **by design** to allow editing before saving
 
 * Times are interpreted in your **local timezone**:
 

@@ -1,4 +1,4 @@
-// content/data/parseShifts.js
+// src/content/data/parseShifts.js
 
 const SHIFT_LINK_SELECTOR = 'a[role="link"][aria-label*=" shift from "]';
 const START_SELECTOR = 'p[data-cy="nextSchedDisplaySegStartTime"]';

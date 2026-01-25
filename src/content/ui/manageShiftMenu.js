@@ -1,4 +1,4 @@
-// content/ui/manageShiftMenu.js
+// src/content/ui/manageShiftMenu.js
 
 let lastManageShiftBtn = null;
 

@@ -1,4 +1,4 @@
-// content/main.js
+// src/content/main.js
 
 function isOnSchedulePage() {
   return location.pathname.includes("/team-member/schedule");

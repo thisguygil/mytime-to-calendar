@@ -1,4 +1,4 @@
-// background/background.js
+// src/background/background.js
 // Orchestrator: imports + message handler
 
 if (typeof importScripts === "function") {

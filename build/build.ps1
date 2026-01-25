@@ -3,36 +3,70 @@ param(
   [string]$Target = "all"
 )
 
+# -------------------- working directory guard --------------------
+
+$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$RepoRoot  = Resolve-Path (Join-Path $ScriptDir "..")
+$Cwd       = Resolve-Path "."
+
+if ($Cwd.Path -eq (Resolve-Path $ScriptDir).Path) {
+  Write-Host @"
+ERROR: build.ps1 must be run from the repository root, not from inside /build.
+
+Correct usage:
+  cd <repo-root>
+  .\build\build.ps1
+
+Current directory:
+  $($Cwd.Path)
+"@ -ForegroundColor Red
+
+  exit 1
+}
+
 # -------------------- config --------------------
 
 $ProjectName = "mytime-to-calendar"
 $Dist = "dist"
+$BuildDir = "build"
 
-# Exclude build/docs/repo metadata + the platform manifests (we inject manifest.json)
-$Excludes = @(
-  "*.md",
-  "manifest.chrome.json",
-  "manifest.firefox.json",
-  ".git",
-  ".gitignore",
-  "dist",
-  "build.ps1"
-)
+$ManifestBase = Join-Path $BuildDir "manifest.base.json"
+$ManifestOverrides = @{
+  chrome  = Join-Path $BuildDir "manifest.chrome.override.json"
+  firefox = Join-Path $BuildDir "manifest.firefox.override.json"
+}
 
 Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-function Copy-RepoToOutDir([string]$OutDir) {
+# -------------------- helpers --------------------
+
+function Copy-ExtensionSources([string]$OutDir) {
   New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
-  Get-ChildItem -Force -Path . | Where-Object {
-    $itemName = $_.Name
-    foreach ($ex in $Excludes) {
-      if ($itemName -like $ex) { return $false }
+  $SrcRoot = "src"
+  $RuntimeDirs = @(
+    "content",
+    "shared",
+    "background",
+    "popup",
+    "icons"
+  )
+
+  if (-not (Test-Path $SrcRoot)) {
+    Write-Host "ERROR: 'src/' directory not found. Run build.ps1 from the repo root." -ForegroundColor Red
+    exit 1
+  }
+
+  foreach ($dir in $RuntimeDirs) {
+    $sourcePath = Join-Path $SrcRoot $dir
+
+    if (-not (Test-Path $sourcePath)) {
+      Write-Host "ERROR: Required directory '$sourcePath' not found." -ForegroundColor Red
+      exit 1
     }
-    return $true
-  } | ForEach-Object {
-    Copy-Item $_.FullName -Destination $OutDir -Recurse -Force
+
+    Copy-Item $sourcePath $OutDir -Recurse -Force
   }
 }
 
@@ -41,6 +75,17 @@ function Assert-ManifestNoBackslashes([string]$ManifestPath) {
   if ($text -match "\\\\") {
     throw "manifest.json contains backslashes. Use forward slashes (/) in all file paths."
   }
+}
+
+function Merge-Manifests([string]$BasePath, [string]$OverridePath, [string]$OutPath) {
+  $base = Get-Content $BasePath -Raw | ConvertFrom-Json
+  $override = Get-Content $OverridePath -Raw | ConvertFrom-Json
+
+  foreach ($prop in $override.PSObject.Properties) {
+    $base | Add-Member -NotePropertyName $prop.Name -NotePropertyValue $prop.Value -Force
+  }
+
+  $base | ConvertTo-Json -Depth 20 -Compress | Set-Content $OutPath -Encoding UTF8
 }
 
 function New-ZipFromDirectoryWithForwardSlashes([string]$SourceDir, [string]$ZipPath) {
@@ -55,12 +100,9 @@ function New-ZipFromDirectoryWithForwardSlashes([string]$SourceDir, [string]$Zip
 
       foreach ($f in $files) {
         $full = $f.FullName
-
-        # Make a relative path, then FORCE forward slashes for the zip entry name
         $rel = $full.Substring($root.Length).TrimStart('\','/')
         $entryName = $rel -replace "\\", "/"
 
-        # Add entry
         $entry = $zip.CreateEntry($entryName, [System.IO.Compression.CompressionLevel]::Optimal)
         $entryStream = $entry.Open()
         try {
@@ -91,21 +133,20 @@ function Invoke-BuildTarget([string]$Platform) {
 
   $OutDir = Join-Path $Dist $Platform
 
-  # Clean platform output dir
   if (Test-Path $OutDir) { Remove-Item $OutDir -Recurse -Force }
 
-  # Copy repo -> dist/<platform>
-  Copy-RepoToOutDir -OutDir $OutDir
+  Copy-ExtensionSources -OutDir $OutDir
+  Copy-Item "src\*" $OutDir -Recurse -Force
 
-  # Inject manifest.json
-  $manifestSource = if ($Platform -eq "chrome") { "manifest.chrome.json" } else { "manifest.firefox.json" }
+  # Generate manifest.json
   $manifestDest = Join-Path $OutDir "manifest.json"
-  Copy-Item $manifestSource $manifestDest -Force
+  Merge-Manifests `
+    -BasePath $ManifestBase `
+    -OverridePath $ManifestOverrides[$Platform] `
+    -OutPath $manifestDest
 
-  # Guard: ensure manifest references use forward slashes
   Assert-ManifestNoBackslashes -ManifestPath $manifestDest
 
-  # Zip (AMO-safe)
   $zipPath = Join-Path $Dist "$ProjectName-$Platform.zip"
   New-ZipFromDirectoryWithForwardSlashes -SourceDir $OutDir -ZipPath $zipPath
 
